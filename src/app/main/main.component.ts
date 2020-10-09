@@ -380,7 +380,7 @@ export class MainComponent implements OnInit, OnDestroy {
     const dryRun = this.dataService.prequery(projectID, sql, location)
       .then((response: BigQueryDryRunResponse) => {
         if (!response.ok) throw new Error('Query analysis failed.');
-        const geoColumn = response.schema.fields.find((f) => f.type === 'GEOGRAPHY');
+        const geoColumn = response.schema.fields.find((f) => f.type === 'STRING');
         if (response.statementType !== 'SELECT') {
           throw new Error('Expected a SELECT statement.');
         } else if (!geoColumn) {
@@ -439,14 +439,7 @@ export class MainComponent implements OnInit, OnDestroy {
     const nonGeoClause = hasNonGeoColumns
       ? `* EXCEPT(${geoColumns.map((f) => `\`${f.name}\``).join(', ')}),`
       : '';
-    return `SELECT
-  ${nonGeoClause}
-  ${ geoColumns.map((f) => `ST_AsGeoJson(\`${f.name}\`) as \`${f.name}\``).join(', ')}
-FROM (
-${USER_QUERY_START_MARKER}\n
-${userQuery.replace(/;\s*$/, '')}\n
-${USER_QUERY_END_MARKER}\n
-);`;
+    return userQuery
   }
 
   query() {
@@ -468,7 +461,7 @@ ${USER_QUERY_END_MARKER}\n
 
     this._dryRun()
       .then((dryRunResponse) => {
-        geoColumns = dryRunResponse.schema.fields.filter((f) => f.type === 'GEOGRAPHY');
+        geoColumns = dryRunResponse.schema.fields.filter((f) => f.type === 'STRING');
 
         // Wrap the user's SQL query, replacing geography columns with GeoJSON.
         this.jobWrappedSql = this.convertToGeovizQuery(sql, geoColumns, dryRunResponse.schema.fields.length);
